@@ -1,32 +1,16 @@
 # GMEScraper
 GME Data Scraper
 
-# ASCII Flowchart
-+-------------------+     +-------------------+     +---------------------+
-| Load sources.json | --> | Loop over Sources | --> | Instantiate Fetcher |
-| (e.g., 20 entries)|     | (Sequential, 1-5s |     | (e.g., PolygonOptionsFetcher) |
-|                   |     |  each)            |     |                     |
-+-------------------+     +-------------------+     +---------------------+
-          |                           |                           |
-          v                           v                           v
-+-------------------+     +-----------------------------+     +-------------------+
-| Fetch Data        | <-- | Normalize DF                | <-- | Check Delta       |
-| (API/Scrape/File) |     | (Add date, source, timestamp)|     | (New date > last?)|
-| e.g., Polygon API |     | e.g., pd.to_datetime()      |     | If no: Skip/Log   |
-+-------------------+     +-----------------------------+     +-------------------+
-          |                           |                           |
-          +---------------------------+---------------------------+
-                              | 
-                              v
-                    +-------------------+
-                    | Upsert to SQLite  |
-                    | (Append if new)   |
-                    +-------------------+
-                              |
-                              v
-                    +-------------------+
-                    | Log Success/Failure|
-                    | (To file/DB/email)|
-                    +-------------------+
-
-End: Daily Run Complete ~2-3 min
+# Processing loop
+``` mermaid
+flowchart TD
+    A[Load sources.json<br/>(e.g., 20 entries)] --> B[Loop over Sources<br/>(Sequential, 1-5s each)]
+    B --> C[Instantiate Fetcher<br/>(e.g., PolygonOptionsFetcher)]
+    C --> G[Check Delta<br/>(New date > last?)<br/>If no: Skip/Log]
+    G -->|Yes| D[Fetch Data<br/>(API/Scrape/File)<br/>e.g., Polygon API]
+    G -->|No| I[Log Success/Failure<br/>(To file/DB/email)]
+    D --> E[Normalize DF<br/>(Add date, source, timestamp)<br/>e.g., pd.to_datetime()]
+    E --> H[Upsert to SQLite<br/>(Append if new)]
+    H --> I
+    I --> J[End: Daily Run Complete ~2-3 min]
+```
