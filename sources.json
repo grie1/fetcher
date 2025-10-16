@@ -1,0 +1,121 @@
+[
+  {
+    "name": "OCC_GME_Options_Series",
+    "type": "occ_txt",
+    "params": {"symbol": "GME"},
+    "table": "occ_series",
+    "fetcher": "OCCSeriesFetcher"
+  },
+  {
+    "name": "GME_Options_Prices_OI_Volume",
+    "type": "polygon_options",
+    "params": {"underlying_ticker": "GME", "limit": 1000},  // Active contracts
+    "table": "options_data",
+    "fetcher": "PolygonOptionsFetcher"
+  },
+  {
+    "name": "GME_FTD",
+    "type": "sec_csv",
+    "params": {"ticker": "GME"},
+    "table": "ftd_data",
+    "fetcher": "SECFtdFetcher"
+  },
+  {
+    "name": "ETF_FTDs",
+    "type": "sec_csv",
+    "params": {"tickers": ["XRT", "IWM", "VTI", "VBR", "VB", "VIOO", "ESPO", "STXK", "TXS", "BKSE", "GAMR", "TRex", "MDY", "FNDA", "IWB", "IJH", "IWS", "ITOT", "IJJ", "VXF", "VTV", "VT"]},
+    "table": "etf_ftd_data",
+    "fetcher": "SECFtdFetcher"
+  },
+  {
+    "name": "XRT_ETF_Creation_Redemption",
+    "type": "nasdaq_flows",
+    "params": {"ticker": "XRT"},
+    "table": "etf_flows",
+    "fetcher": "NasdaqEtfFetcher"
+  },
+  {
+    "name": "REG_SHO_Status",
+    "type": "nyse_threshold",
+    "params": {"tickers": ["GME", "GMEU", "XRT"]},
+    "table": "reg_sho_status",
+    "fetcher": "NYSEThresholdFetcher"
+  },
+  {
+    "name": "GME_Price_AfterHours",
+    "type": "polygon_aggs",
+    "params": {"ticker": "GME", "extended_hours": true},
+    "table": "price_data",
+    "fetcher": "PolygonAggsFetcher"
+  },
+  {
+    "name": "GME_Cash_Balance",
+    "type": "yahoo_financials",
+    "params": {"ticker": "GME"},
+    "table": "financials",
+    "fetcher": "YahooFinancialsFetcher"  // Quarterly, but fetch daily for latest
+  },
+  {
+    "name": "GME_CostToBorrow_ShortPct",
+    "type": "fintel_short",
+    "params": {"ticker": "GME"},
+    "table": "short_data",
+    "fetcher": "FintelShortFetcher"
+  },
+  {
+    "name": "US_10Y_Yield",
+    "type": "fred_api",
+    "params": {"series": "DGS10"},
+    "table": "macro_data",
+    "fetcher": "FREDFetcher"
+  },
+  {
+    "name": "Fed_Funds_Rate",
+    "type": "fred_api",
+    "params": {"series": "FEDFUNDS"},
+    "table": "macro_data",
+    "fetcher": "FREDFetcher"
+  },
+  {
+    "name": "GME_Outstanding_Shares",
+    "type": "yahoo_shares",
+    "params": {"ticker": "GME"},
+    "table": "shares_data",
+    "fetcher": "YahooSharesFetcher"
+  },
+  {
+    "name": "CAT_Errors_GME",
+    "type": "x_semantic",
+    "params": {"query": "GME CAT errors Consolidated Audit Trail"},
+    "table": "cat_errors",
+    "fetcher": "XSemanticFetcher"  // Proxy via X posts; no direct API
+  },
+  {
+    "name": "GME_Utilization",
+    "type": "fintel_short",  // Proxy for ORTEX
+    "params": {"ticker": "GME"},
+    "table": "short_data",
+    "fetcher": "FintelShortFetcher"
+  },
+  {
+    "name": "GME_Corporate_Actions",
+    "type": "polygon_events",
+    "params": {"ticker": "GME"},
+    "table": "corporate_actions",
+    "fetcher": "PolygonEventsFetcher"
+  },
+  {
+    "name": "GME_Catalysts",
+    "type": "x_keyword",
+    "params": {"query": "GME catalyst OR event OR news"},
+    "table": "catalysts",
+    "fetcher": "XKeywordFetcher"
+  },
+  {
+    "name": "OPEX_T33",
+    "type": "static_calendar",
+    "params": {"ticker": "GME"},
+    "table": "opex_calendar",
+    "fetcher": "OpexCalendarFetcher"  // Calc from fixed dates
+  }
+]
