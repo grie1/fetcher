@@ -1,0 +1,9 @@
+[
+  {
+    "name": "OCC_GME_Series",
+    "type": "occ_series",
+    "params": {"symbol": "GME"},
+    "table": "options_data",
+    "fetcher": "OCCSeriesFetcher"
+  }
+]
