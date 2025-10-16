@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 from io import StringIO
 from base_fetcher import BaseFetcher
+from datetime import datetime
 
 class OCCSeriesFetcher(BaseFetcher):
     def fetch(self, params: dict) -> pd.DataFrame:
@@ -16,35 +17,94 @@ class OCCSeriesFetcher(BaseFetcher):
             print(f"OCC fetch failed: {resp.status_code}")
             return pd.DataFrame()
         
-        content_type = resp.headers.get('content-type', '')
-        if 'text/plain' not in content_type and 'txt' not in content_type.lower():
-            print("Response not TXT; possible redirect/HTML.")
+        content_type = resp.headers.get('content-type', '').lower()
+        if 'octet-stream' not in content_type and 'text/plain' not in content_type and 'txt' not in content_type:
+            print(f"Unexpected content-type: {content_type}")
             return pd.DataFrame()
         
-        # Parse pipe-delimited TXT with header
+        # Robust line-by-line parse: Filter for 11-field data lines
         try:
-            df = pd.read_csv(StringIO(resp.text), sep='|', header=0)
-            # Columns from OCC spec (adapt if mismatch)
-            expected_cols = ['OCCSymbol', 'Underlying', 'PutCall', 'Strike', 'Expiry', 'OI', 'Volume']
-            if len(df.columns) < len(expected_cols):
-                df.columns = expected_cols[:len(df.columns)]  # Truncate if fewer
-            else:
-                df = df[expected_cols]  # Select if more
+            lines = resp.text.splitlines()
+            data_rows = []
+            for line in lines:
+                fields = line.split()  # Default split() uses whitespace
+                if len(fields) == 11 and fields[0] in ['GME', 'GME1']:  # Data pattern for GME
+                    data_rows.append(fields)
             
-            # Normalize types
-            df['Strike'] = pd.to_numeric(df['Strike'], errors='coerce')
-            df['OI'] = pd.to_numeric(df['OI'], errors='coerce').fillna(0).astype(int)
-            df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce').fillna(0).astype(int)
-            df['Expiry'] = pd.to_datetime(df['Expiry'], errors='coerce').dt.strftime('%Y-%m-%d')
+            if not data_rows:
+                print("No data rows found.")
+                return pd.DataFrame()
             
-            # Add date (snapshot day)
-            df['date'] = datetime.now().date()
+            # Build DF with columns
+            df_raw = pd.DataFrame(data_rows, columns=[
+                'ProductSymbol', 'year', 'Month', 'Day', 'Integer', 'Dec', 
+                'C_indicator', 'P_indicator', 'call_oi', 'put_oi', 'limit'
+            ])
+            
+            # Clean: Numeric types
+            df_raw['Integer'] = pd.to_numeric(df_raw['Integer'], errors='coerce')
+            df_raw['Dec'] = df_raw['Dec'].astype(str).str.zfill(3)  # '000'
+            df_raw['call_oi'] = pd.to_numeric(df_raw['call_oi'], errors='coerce').fillna(0).astype(int)
+            df_raw['put_oi'] = pd.to_numeric(df_raw['put_oi'], errors='coerce').fillna(0).astype(int)
+            df_raw['limit'] = pd.to_numeric(df_raw['limit'], errors='coerce').fillna(0).astype(int)
             
             # Drop invalid
-            df = df.dropna(subset=['OCCSymbol'])
+            df_raw = df_raw.dropna(subset=['ProductSymbol'])
+            
+            # Compute strike and expiry
+            df_raw['strike_price'] = df_raw['Integer'] + pd.to_numeric('0.' + df_raw['Dec'])
+            df_raw['expiration_date'] = (
+                df_raw['year'].astype(str) + '-' + 
+                df_raw['Month'].astype(str).str.zfill(2) + '-' + 
+                df_raw['Day'].astype(str).str.zfill(2)
+            )
+            
+            # Duplicate for calls/puts (only if OI >0)
+            calls = df_raw[df_raw['call_oi'] > 0].copy()
+            if not calls.empty:
+                calls['put_call'] = 'C'
+                calls['open_interest'] = calls['call_oi']
+                calls['contract_symbol'] = (
+                    calls['ProductSymbol'].astype(str) + 
+                    calls['year'].astype(str) + 
+                    calls['Month'].astype(str).str.zfill(2) + 
+                    calls['Day'].astype(str).str.zfill(2) + 'C' + 
+                    calls['Integer'].astype(str).str.zfill(5) + calls['Dec'] + '00'
+                )
+            
+            puts = df_raw[df_raw['put_oi'] > 0].copy()
+            if not puts.empty:
+                puts['put_call'] = 'P'
+                puts['open_interest'] = puts['put_oi']
+                puts['contract_symbol'] = (
+                    puts['ProductSymbol'].astype(str) + 
+                    puts['year'].astype(str) + 
+                    puts['Month'].astype(str).str.zfill(2) + 
+                    puts['Day'].astype(str).str.zfill(2) + 'P' + 
+                    puts['Integer'].astype(str).str.zfill(5) + puts['Dec'] + '00'
+                )
+            
+            df = pd.concat([calls, puts], ignore_index=True)
+            if df.empty:
+                return pd.DataFrame()
+            
+            # Add metadata (ticker added in daily_pull.py)
+            df['date'] = datetime.now().strftime('%Y-%m-%d')
+            df['volume'] = 0  # Placeholder; merge Polygon for volume/prices
+            df['last_price'] = 0.0
+            df['bid'] = 0.0
+            df['ask'] = 0.0
+            df['source'] = 'OCC'
+            
+            # Select schema columns (date first, source last; ticker post-fetch)
+            df = df[[
+                'date', 'contract_symbol', 'put_call', 'strike_price', 'expiration_date', 
+                'open_interest', 'volume', 'last_price', 'bid', 'ask', 'source'
+            ]]
             
             print(f"Fetched {len(df)} series for {symbol}.")
             return df
+            
         except Exception as e:
             print(f"Parse error: {e}")
             return pd.DataFrame()

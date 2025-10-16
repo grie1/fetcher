@@ -12,7 +12,7 @@ class BaseFetcher(ABC):
 
     def normalize(self, df: pd.DataFrame, source_name: str) -> pd.DataFrame:
         """Normalize with shared fields."""
-        df['date'] = pd.to_datetime(df['date'] or datetime.now().date()).dt.strftime('%Y-%m-%d')
+        df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
         df['source'] = source_name
         df['ingest_timestamp'] = datetime.now()
         return df

@@ -8,23 +8,30 @@ def init_db():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
+    # Drop and recreate for schema update (safe for dev; comment out for prod)
+    cursor.execute('DROP TABLE IF EXISTS options_data')
+    
+    # New schema matching current DF
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS options_data (
         date TEXT NOT NULL,
         ticker TEXT NOT NULL,
-        OCCSymbol TEXT,
-        Underlying TEXT,
-        PutCall TEXT,
-        Strike REAL,
-        Expiry TEXT,
-        OI INTEGER,
-        Volume INTEGER,
+        contract_symbol TEXT,
+        put_call TEXT,
+        strike_price REAL,
+        expiration_date TEXT,
+        open_interest INTEGER,
+        volume INTEGER,
+        last_price REAL,
+        bid REAL,
+        ask REAL,
         source TEXT NOT NULL,
         ingest_timestamp TEXT NOT NULL,
-        UNIQUE(date, ticker, OCCSymbol)
+        UNIQUE(date, ticker, contract_symbol)
     )
     ''')
     
+    # Index for fast queries
     cursor.execute('CREATE INDEX IF NOT EXISTS idx_options_date_ticker ON options_data (date, ticker)')
     
     conn.commit()
