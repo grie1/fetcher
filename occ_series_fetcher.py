@@ -3,6 +3,9 @@ import pandas as pd
 from io import StringIO
 from base_fetcher import BaseFetcher
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class OCCSeriesFetcher(BaseFetcher):
     def fetch(self, params: dict) -> pd.DataFrame:
@@ -14,12 +17,12 @@ class OCCSeriesFetcher(BaseFetcher):
         
         resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code != 200:
-            print(f"OCC fetch failed: {resp.status_code}")
+            logger.error(f"OCC fetch failed: {resp.status_code}")
             return pd.DataFrame()
         
         content_type = resp.headers.get('content-type', '').lower()
         if 'octet-stream' not in content_type and 'text/plain' not in content_type and 'txt' not in content_type:
-            print(f"Unexpected content-type: {content_type}")
+            logger.warning(f"Unexpected content-type: {content_type}")
             return pd.DataFrame()
         
         # Robust line-by-line parse: Filter for 11-field data lines
@@ -32,7 +35,7 @@ class OCCSeriesFetcher(BaseFetcher):
                     data_rows.append(fields)
             
             if not data_rows:
-                print("No data rows found.")
+                logger.warning("No data rows found.")
                 return pd.DataFrame()
             
             # Build DF with columns
@@ -102,9 +105,9 @@ class OCCSeriesFetcher(BaseFetcher):
                 'open_interest', 'volume', 'last_price', 'bid', 'ask', 'source'
             ]]
             
-            print(f"Fetched {len(df)} series for {symbol}.")
+            logger.info(f"Fetched {len(df)} series for {symbol}.")
             return df
             
         except Exception as e:
-            print(f"Parse error: {e}")
+            logger.error(f"Parse error: {e}")
             return pd.DataFrame()
