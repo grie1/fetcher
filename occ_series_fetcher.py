@@ -25,14 +25,32 @@ class OCCSeriesFetcher(BaseFetcher):
             logger.warning(f"Unexpected content-type: {content_type}")
             return pd.DataFrame()
         
-        # Robust line-by-line parse: Filter for 11-field data lines
+        # Robust line-by-line parse: Filter for GME variants, handle 10/11 fields
         try:
             lines = resp.text.splitlines()
             data_rows = []
+            missed_lines = []  # For logging anomalies
             for line in lines:
-                fields = line.split()  # Default split() uses whitespace
-                if len(fields) == 11 and fields[0] in ['GME', 'GME1']:  # Data pattern for GME
+                fields = line.split()  # Whitespace split
+                if len(fields) < 10 or not fields[0].startswith('GME'):
+                    continue  # Skip non-data/non-GME
+                
+                if len(fields) == 11:
+                    # Standard: ProductSymbol year Month Day Integer Dec C P call_oi put_oi limit
+                    if fields[6] == 'C' and fields[7] == 'P':  # Expected C/P order
+                        data_rows.append(fields)
+                    else:
+                        missed_lines.append(line)
+                elif len(fields) == 10:
+                    # Irregular (e.g., put-only): Assume C=0, insert fake 'C' '0' before put_oi
+                    fields.insert(7, '0')  # call_oi=0
+                    fields.insert(6, 'C')  # Fake C indicator
                     data_rows.append(fields)
+                else:
+                    missed_lines.append(line)
+            
+            if missed_lines:
+                logger.warning(f"Missed {len(missed_lines)} irregular lines: {missed_lines[:3]}...")  # Log first 3
             
             if not data_rows:
                 logger.warning("No data rows found.")
@@ -81,7 +99,7 @@ class OCCSeriesFetcher(BaseFetcher):
                 puts['open_interest'] = puts['put_oi']
                 puts['contract_symbol'] = (
                     puts['ProductSymbol'].astype(str) + 
-                    puts['year'].astype(str) + 
+                    puts['year'].astype(str) +  # Fixed: puts['year']
                     puts['Month'].astype(str).str.zfill(2) + 
                     puts['Day'].astype(str).str.zfill(2) + 'P' + 
                     puts['Integer'].astype(str).str.zfill(5) + puts['Dec'] + '00'
@@ -105,7 +123,7 @@ class OCCSeriesFetcher(BaseFetcher):
                 'open_interest', 'volume', 'last_price', 'bid', 'ask', 'source'
             ]]
             
-            logger.info(f"Fetched {len(df)} series for {symbol}.")
+            logger.info(f"Fetched {len(df)} series for {symbol}. Unique ProductSymbols: {df_raw['ProductSymbol'].nunique()}.")
             return df
             
         except Exception as e:

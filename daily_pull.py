@@ -3,7 +3,8 @@ import sqlite3
 import pandas as pd
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, date
+from market_holidays import is_trading_day
 
 # Setup logging: Append to occ_daily.log, with timestamps
 logging.basicConfig(
@@ -31,6 +32,15 @@ drop_table = os.getenv('DROP_TABLE', 'false').lower() == 'true'
 init_db(drop_table=drop_table)
 
 logger.info(f"Daily pull started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Sources: {len(sources)} | Drop table: {drop_table}")
+
+# Trading day check (skip non-trading days)
+today_date = date.today()
+if not is_trading_day(today_date):
+    logger.info(f"Non-trading day ({today_date}): {today_date.strftime('%A')} or holiday. Skipping pull.")
+    conn.close()
+    logger.info(f"DROP_TABLE env: {os.getenv('DROP_TABLE', 'false')}")
+    logger.info(f"Daily pull complete at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Total new rows across sources: 0")
+    exit()
 
 total_inserted = 0
 for src in sources:
@@ -69,4 +79,5 @@ for src in sources:
         logger.error(f"{src_name}: Failed with error: {e}")
 
 conn.close()
+logger.info(f"DROP_TABLE env: {os.getenv('DROP_TABLE', 'false')}")
 logger.info(f"Daily pull complete at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Total new rows across sources: {total_inserted}")
