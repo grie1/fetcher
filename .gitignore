@@ -18,3 +18,12 @@ Thumbs.db
 
 # Logs (if added later)
 *.log
+
+# Environment
+*.env
+
+# Syncthing
+*.stfolder/
+*.stignore
+
+
