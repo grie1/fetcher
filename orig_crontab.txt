@@ -1,0 +1,17 @@
+# Fetcher
+
+
+# OCC Options
+#0 3 * * * cd /home/eric/Desktop/github/fetcher && source venv/bin/activate && python daily_pull.py >> occ_daily.log 2>&1
+0 */4 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python daily_pull.py >> occ_daily.log 2>&1
+
+# Market Holidays
+0 0 * * 0 cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python market_holidays.py >> occ_daily.log 2>&1
+
+# ETF Data
+# Add: Run at 6 PM UTC daily (adjust time; full path to venv python)
+0 18 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python etf_data_pull.py >> etf_pull.log 2>&1
+
+# Ticker Data (GME, KOSS, etc.)
+0 3 * * * /home/eric/Desktop/github/fetcher/venv/bin/python /home/eric/Desktop/github/fetcher/fetch_tickers.py >> /home/eric/Desktop/github/fetcher/data/fetcher_cron.log 2>&1
+

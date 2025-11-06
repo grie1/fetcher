@@ -12,6 +12,13 @@ import pandas as pd
 import sqlite3
 import logging
 from datetime import datetime
+import time
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.FileHandler('logs/etf_import.log', mode='a')]
+)
 
 # Config
 CSV_PATH = 'ETF_HISTORICAL_DATA.csv'
@@ -141,4 +148,23 @@ def import_historical_data(csv_path, db_path, source):
     conn.close()
 
 if __name__ == '__main__':
-    import_historical_data(CSV_PATH, DB_PATH, SOURCE)
+    start_time = time.time()
+    errors = []
+    try:
+        import_historical_data(CSV_PATH, DB_PATH, SOURCE)
+        # Assume you add: inserted_rows = len(new_df) in function and return it
+        # For now, query post-import:
+        conn = sqlite3.connect(DB_PATH)
+        inserted_rows = pd.read_sql("SELECT COUNT(*) FROM daily_etf_shares", conn).iloc[0, 0]
+        conn.close()
+        status = 'success'
+        notes = f"Imported for {len(TICKERS)} tickers"
+    except Exception as e:
+        errors = [str(e)]
+        status = 'error'
+        inserted_rows = 0
+        notes = "Failed import"
+
+    duration = time.time() - start_time
+    from cron_logger import log_job_summary
+    log_job_summary('ETF Historical Import', status, inserted_rows, errors, duration, notes)
