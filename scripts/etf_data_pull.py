@@ -16,7 +16,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('logs/etf_pull.log', mode='a'),
-        logging.StreamHandler()
+        #logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
@@ -100,13 +100,13 @@ def normalize_data(raw_data):
     return df
 
 def upsert_to_db(df, db_path=DB_PATH):
-    """Upsert to SQLite like daily_pull.py: idempotent on (date, ticker)."""
+    """Upsert to SQLite: insert or update on (date, ticker) conflict."""
     if df.empty:
         logger.info("No new data to insert.")
         return
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
-    # Create table if not exists (schema: date TEXT, ticker TEXT, shares_outstanding INTEGER, source TEXT)
+    # Create table if not exists (schema matches your provided CREATE)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS daily_etf_shares (
             date TEXT,
@@ -116,11 +116,19 @@ def upsert_to_db(df, db_path=DB_PATH):
             PRIMARY KEY (date, ticker)
         )
     ''')
-    # Upsert via Pandas (append is safe with PRIMARY KEY conflict resolution)
-    df.to_sql('daily_etf_shares', conn, if_exists='append', index=False, method='multi')
+    # Batch upsert
+    rows = df.to_records(index=False).tolist()
+    cursor.executemany('''
+        INSERT INTO daily_etf_shares (date, ticker, shares_outstanding, source)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(date, ticker) DO UPDATE SET
+            shares_outstanding = excluded.shares_outstanding,
+            source = excluded.source
+    ''', rows)
     conn.commit()
     conn.close()
     logger.info(f"Upserted {len(df)} rows for {TODAY}")
+
 
 if __name__ == '__main__':
     errors = []

@@ -1,0 +1,41 @@
+# =============================================================================
+# FETCHER CRON JOBS - /home/eric/Desktop/github/fetcher
+# Groups: Daily (end-of-day pulls), Intra-day (frequent checks), Weekly (maintenance)
+# Logs: Appended to logs/*.log with timestamps; unique per job
+# Paths: Full venv Python + cd for isolation
+# Env: Assumes MAILGUN_* vars in ~/.bashrc or .env (loaded in scripts)
+# Total jobs: 7 (room for 13 more)
+# =============================================================================
+
+# --- DAILY JOBS (00:00-23:59 UTC) ---
+
+# OCC Options Daily Pull (3 AM UTC, trading days only)
+0 3 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/occ_options_pull.py >> logs/occ_options_pull.log 2>&1
+
+# SEC FTD Data Pull (4 AM UTC daily, incremental; checks for new half-month releases)
+0 4 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/ftd_data_pull.py >> logs/ftd_pull.log 2>&1
+
+# Ticker Historical Data (GME, KOSS, etc.; 3 AM UTC daily, incremental)
+0 3 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/fetch_tickers.py >> logs/fetcher_cron.log 2>&1
+
+# ETF Data Pull (6 PM UTC daily)
+0 18 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/etf_data_pull.py >> logs/etf_pull.log 2>&1
+
+# Daily Log Summary & Email (11 PM UTC; queries cron_logs.db)
+0 23 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/send_daily_summary.py >> logs/summary.log 2>&1
+
+# [Future Daily Slots: e.g., 0 4 * * * ... scripts/polygon_options.py >> logs/polygon.log 2>&1]
+
+# --- INTRA-DAY JOBS (Multiple runs/day) ---
+
+# OCC Options Frequent Check (Every 4 hours)
+0 */4 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/occ_options_pull.py >> logs/occ_options_pull.log 2>&1
+
+# [Future Intra-day: e.g., 30 */2 * * 1-5 ... scripts/intraday_volume.py >> logs/volume.log 2>&1 (Mon-Fri only)]
+
+# --- WEEKLY JOBS (Maintenance) ---
+
+# Market Holidays Update (Sunday midnight UTC)
+0 0 * * 0 cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/market_holidays.py >> logs/holidays.log 2>&1
+
+# [Future Weekly: e.g., 0 1 * * 0 ... scripts/db_backup.py >> logs/backup.log 2>&1]
