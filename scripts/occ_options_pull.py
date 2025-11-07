@@ -12,15 +12,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 root_logger = logging.getLogger()
 root_logger.handlers.clear()  # Reset any prior configs (e.g., from imports)
 
-file_handler = logging.FileHandler('logs/occ_options_pull.log', mode='a')
-file_handler.setLevel(logging.INFO)
-file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.INFO)
 console_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-
-root_logger.addHandler(file_handler)
 root_logger.addHandler(console_handler)
 
 logger = logging.getLogger(__name__)
@@ -29,7 +23,6 @@ logger = logging.getLogger(__name__)
 start_time = time.time()
 
 # Import fetchers
-from market_holidays import is_trading_day
 from occ_series_fetcher import OCCSeriesFetcher
 
 # Load config
