@@ -9,14 +9,14 @@
 
 # --- DAILY JOBS (00:00-23:59 UTC) ---
 
-# OCC Options Daily Pull (3 AM UTC, trading days only)
-0 3 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/occ_options_pull.py >> logs/occ_options_pull.log 2>&1
-
 # SEC FTD Data Pull (4 AM UTC daily, incremental; checks for new half-month releases)
 0 4 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/ftd_data_pull.py >> logs/ftd_pull.log 2>&1
 
 # Ticker Historical Data (GME, KOSS, etc.; 3 AM UTC daily, incremental)
-0 3 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/fetch_tickers.py >> logs/fetcher_cron.log 2>&1
+0 3 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/stock_ticker_pull.py >> logs/stock_ticker_pull.log 2>&1
+
+# Ticker Historical Data 1m
+0 4 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/stock_ticker_1m_pull.py >> logs/stock_ticker_1m_pull.log 2>&1
 
 # ETF Data Pull (6 PM UTC daily)
 0 18 * * * cd /home/eric/Desktop/github/fetcher && /home/eric/Desktop/github/fetcher/venv/bin/python scripts/etf_data_pull.py >> logs/etf_pull.log 2>&1
