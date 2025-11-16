@@ -40,12 +40,13 @@ logger.info(f"Daily pull started at {datetime.now().strftime('%Y-%m-%d %H:%M:%S'
 today_date = date.today()
 errors = []  # Collect here
 total_inserted = 0
+skipped_sources = 0  # Track skips explicitly
 if not is_trading_day(today_date):
     logger.info(f"Non-trading day ({today_date}): {today_date.strftime('%A')} or holiday. Skipping pull.")
     status = 'warning'
     notes = "Skipped: non-trading day"
 else:
-    status = 'error'  # Default to error if issues
+    # Default notes
     notes = f"Processed {len(sources)} sources"
     for src in sources:
         src_name = src['name']
@@ -55,7 +56,9 @@ else:
             fetcher = fetcher_class()
             df = fetcher.fetch(src['params'])
             if df is None or df.empty:
-                logger.warning(f"{src_name}: Fetch returned empty/None, skipped.")
+                error_msg = f"{src_name}: Fetch returned empty/None, skipped."
+                logger.warning(error_msg)
+                errors.append(error_msg)  # Flag as soft error for status
                 continue
             df = fetcher.normalize(df, src_name)
             df['ticker'] = src['params'].get('symbol', 'GME')
@@ -71,11 +74,23 @@ else:
                 total_inserted += len(df)
             else:
                 logger.info(f"{src_name}: No new data (max date {df_date} <= {last_date_str}), skipped.")
+                skipped_sources += 1
         except Exception as e:
             error_msg = f"{src_name}: {str(e)}"
             logger.error(error_msg)
             errors.append(error_msg)
-    status = 'success' if total_inserted > 0 and not errors else ('warning' if errors else 'error')
+    
+    # Updated status logic
+    if errors:
+        status = 'error' if total_inserted == 0 else 'warning'
+        notes += f" | Errors: {len(errors)}"
+    else:
+        if total_inserted > 0:
+            status = 'success'
+            notes += f" | Inserted: {total_inserted} rows"
+        else:
+            status = 'success'  # Treat no-new-data as success (idempotent run)
+            notes += f" | No new data (skipped {skipped_sources})"
 
 conn.close()
 duration = time.time() - start_time

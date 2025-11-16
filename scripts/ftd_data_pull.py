@@ -191,7 +191,7 @@ if __name__ == '__main__':
     errors = []
     total_inserted = 0
     notes = ""
-    init_db(drop_table=True)  # Set to True for fresh start / backfill
+    init_db(drop_table=False)  # Set to True for fresh start / backfill
     conn = sqlite3.connect(DB_PATH)
     last_date = get_last_date('ftd_data', conn)
     logger.info(f"Last date in DB: {last_date}")
